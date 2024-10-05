@@ -4,6 +4,7 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const {Student} = require("../db")
 const bcrypt = require("bcrypt")
+const {z} = require("zod")
 const jwt = require("jsonwebtoken")
 const {zodVerify} = require("../middlewares/zodregistration")
 const {zodLoginVerify} = require("../middlewares/zodlogin")
@@ -132,6 +133,7 @@ studentRouter.get("/login",zodLoginVerify,async(req,res)=>{
 })
 
 studentRouter.post("/forgotPassword",async(req,res)=>{
+    try {
         const {email} = req.body
         const user = await Student.findOne({email:email})
       
@@ -157,8 +159,12 @@ studentRouter.post("/forgotPassword",async(req,res)=>{
             if (error) {
               return res.status(500).json('Error sending email.');
             }
-            res.send('Password reset link sent to your email.');
+            res.json({message:'Password reset link sent to your email.'});
           })
+    } catch (error) {
+        res.json({message:"server error pls try agin later"})
+    }
+        
 
 })
 
@@ -166,6 +172,7 @@ studentRouter.get('/reset-password', async (req, res) => {
     const { token } = req.query;
   
     const user = await Student.findOne({ resetToken: token})
+    console.log(user)
     const id = user._id
     if (!user) {
       return res.status(400).send('Invalid or expired token.');
@@ -185,6 +192,8 @@ studentRouter.get('/reset-password', async (req, res) => {
   })
 
   studentRouter.post("/updatePassword",async(req,res)=>{
+    
+   try {
     const requireBody = z.object({
         email:z.string().email(),
         password: z.string().max(20),
@@ -204,17 +213,16 @@ studentRouter.get('/reset-password', async (req, res) => {
     const password = safeParse.data.password
     const hashPassword = await bcrypt.hash(password,5)
 
-    const user = Student.findOne({email:email})
+    const user = await Student.findOne({email:email})
     if(!user){
         res.json({message:"Enter coreect email!",valid:false})
     }
-   try {
         user.password = hashPassword
         await user.save()
         res.json({message:"password changed sucessfully",valid:true})
     
      } catch (error) {
-        res.json({message:"password change failed",vaild:true})
+        res.json({message:"password change failed",valid:false})
       }
   
   })

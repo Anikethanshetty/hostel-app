@@ -27,7 +27,8 @@ const studentSchema = new Schema({
         type:String,
         enum:[true,false]
     },
-    verificationToken:{type:String}
+    verificationToken:{type:String},
+    resetToken:{type:String}
 })
 
 const Student = mongoose.model('Student', studentSchema);
