@@ -1,23 +1,35 @@
 const express = require("express")
-const app = express()
-
-require("dotenv").config()
-const dbConnect = process.env.DbUrl
+const app = express();
+const { PrismaClient } = require("@prisma/client")
+require("dotenv").config();
 const PORT = process.env.PORT
 
-const mongoose = require("mongoose")
+const prisma = new PrismaClient()
+
+const { studentRouter } = require("./routes/student");
+const { adminRouter } = require("./routes/admin");
+app.use(express.json());
+
+app.use("/student/v1", studentRouter)
+app.use("/admin/v1", adminRouter)
 
 
-const {studentRouter} = require("./routes/student")
-app.use(express.json())
+async function connection() {
+  try {
+    
+    await prisma.$connect()
+    console.log("Connected to the database")
 
-app.use("/student/v1",studentRouter)
-
-async function connection(){
-    await mongoose.connect(dbConnect)
-    app.listen(PORT,()=>{
-        console.log(`http://localhost:${PORT}/signup`)
-    })
+    // Start the server
+    app.listen(PORT, () => {
+      console.log(`Server running at http://localhost:${PORT}/signup`)
+    });
+  } catch (error) {
+    console.error("Failed to connect to the database", error)
+    process.exit(1)
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
 connection()

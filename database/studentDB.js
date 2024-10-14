@@ -23,6 +23,13 @@ const studentSchema = new Schema({
         type: String, 
         default: "1st year" 
     },
+    room: {
+        type: String, 
+        
+    },
+    block: {
+        type: String, 
+    },
     verified:{
         type:String,
         enum:[true,false]

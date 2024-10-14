@@ -2,7 +2,6 @@ const {Router} = require("express")
 const studentRouter = Router()
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-const {Student} = require("../db")
 const bcrypt = require("bcrypt")
 const {z} = require("zod")
 const jwt = require("jsonwebtoken")
@@ -11,6 +10,10 @@ const {zodLoginVerify} = require("../middlewares/zodlogin")
 const {verifyJwt} = require("../middlewares/authJwt");
 require("dotenv").config()
 const SECRET = process.env.JWT_SECRET_STUDENT
+
+const { PrismaClient } = require("@prisma/client")
+const prisma = new PrismaClient()
+
 
 const transporter = nodemailer.createTransport({
     service: 'gmail', 
@@ -23,9 +26,9 @@ const transporter = nodemailer.createTransport({
 studentRouter.post("/signup", zodVerify, async (req, res) => {
     try {
          
-        const { email, password, name, year, usn } = req.body
+        const { email, password, name, year, usn,room,block } = req.body
 
-        const user = await Student.findOne({ email })
+        const user = await prisma.student.findFirst({where:{email:email}})
         if (user) {
             res.status(403).json({ message: "User already exists" })
             return
@@ -35,14 +38,19 @@ studentRouter.post("/signup", zodVerify, async (req, res) => {
         const hashPassword = await bcrypt.hash(password, 10)
         const verificationToken = crypto.randomBytes(32).toString('hex')
 
-        await Student.create({
-            email,
-            password: hashPassword,
-            name,
-            year,
-            usn,
-            verified: false,
-            verificationToken
+        await prisma.student.create({
+            data:{
+                email,
+                password: hashPassword,
+                name,
+                year,
+                usn,
+                room,
+                block,
+                verified: false,
+                verificationToken
+            }
+          
         })
 
       
@@ -85,18 +93,23 @@ studentRouter.post("/signup", zodVerify, async (req, res) => {
 studentRouter.get("/verify-email", async (req, res) => {
     const { token, email } = req.query
     try {
-        const student = await Student.findOne({ email: email, verificationToken: token })
-        const id = student._id
+        const student = await prisma.student.findUnique({ 
+           where:{
+            email: email, 
+            verificationToken: token 
+           } 
+        })
         if (!student) {
             return res.status(400).json({ message: "Invalid token or email" ,verified:false})
         }
-        student.verified = true
-        await student.save()
-        await Student.updateOne(
-            { _id: id },
-            { $unset: { verificationToken: "" } }
-          )
-          
+        
+        await prisma.student.update({
+            where:{id:student.id},
+            data:{
+                verified:true,
+                verificationToken:null
+            }
+        })
         res.json({ message: "Email verified successfully" ,verified:true})
     } catch (error) {
         console.log(error)
@@ -105,16 +118,20 @@ studentRouter.get("/verify-email", async (req, res) => {
 })
 
 studentRouter.get("/me",verifyJwt,(req,res)=>{
-         const email = req.email
-         const user = Student.findOne({email:email})
+         const email = req.body
+         const user = prisma.student.findFirst({where:{email:email}})
         if(user){
-            res.json({message:"user found"})
+            res.json({message:"user found",email})
         }
 })
 
 studentRouter.get("/login",zodLoginVerify,async(req,res)=>{
             const {email,password} = req.body
-            const user = await Student.findOne({email:email})
+            const user = await prisma.student.findFirst({
+                where:{
+                    email:email
+                }
+            })
 
             if(user){
                 bcrypt.compare(password,user.password,(err,sucess)=>{
@@ -123,7 +140,7 @@ studentRouter.get("/login",zodLoginVerify,async(req,res)=>{
                     }
                     else{
                         const token = jwt.sign({email:email},SECRET)
-                        res.json({valid:sucess,token,message:"Logged in Sucessfully"})
+                        res.json({valid:true,token,message:"Logged in Sucessfully"})
                     }
                 })
             }
@@ -135,15 +152,22 @@ studentRouter.get("/login",zodLoginVerify,async(req,res)=>{
 studentRouter.post("/forgotPassword",async(req,res)=>{
     try {
         const {email} = req.body
-        const user = await Student.findOne({email:email})
+        const user = await prisma.student.findFirst({where:{email:email}})
       
         if(!user){
             return res.status(400).json({message:"user not found pls enter corect email.",valid:false})
         }
 
         const resetToken = crypto.randomBytes(32).toString('hex')
-        user.resetToken = resetToken
-        await user.save()
+       
+        await prisma.student.update({
+            where:{
+                id:user.id
+            },
+            data:{
+                resetToken:resetToken
+            }
+        })
 
         const resetLink = `${process.env.FORGOT_PASSWORD_DOMIAN}?token=${resetToken}`
 
@@ -163,68 +187,81 @@ studentRouter.post("/forgotPassword",async(req,res)=>{
           })
     } catch (error) {
         res.json({message:"server error pls try agin later"})
-    }
-        
-
+    } 
 })
 
 studentRouter.get('/reset-password', async (req, res) => {
-    const { token } = req.query;
-  
-    const user = await Student.findOne({ resetToken: token})
-    console.log(user)
-    const id = user._id
+    const { token } = req.query
+    const user = await prisma.student.findFirst({where:{resetToken: token}})
     if (!user) {
-      return res.status(400).send('Invalid or expired token.');
+      return res.status(400).send('Invalid token.');
     }
-
-     const update = await Student.updateOne(
-        { _id: id },
-        { $unset: { resetToken: "" } }
-      )
-
-      if(update){
+    else{
         res.json({message:"Reset Password",valid:true})
-      }
-      else{
-        res.json({message:"Cannot reset-password,Pls try again later!",valid:false})
-      }
+    }
   })
 
-  studentRouter.post("/updatePassword",async(req,res)=>{
+  studentRouter.post("/updatePassword",verifyJwt,async(req,res)=>{
     
    try {
-    const requireBody = z.object({
-        email:z.string().email(),
-        password: z.string().max(20),
-    })
-
-    const safeParse = requireBody.safeParse(req.body)
-
-    if (!safeParse.success) {
-        res.status(411).json({
-            message: "Incorrect format",
-            error: safeParse.error.issues[0].message 
-        })
-        return
-    }
-
-    const email = safeParse.data.email
-    const password = safeParse.data.password
-    const hashPassword = await bcrypt.hash(password,5)
-
-    const user = await Student.findOne({email:email})
-    if(!user){
-        res.json({message:"Enter coreect email!",valid:false})
-    }
-        user.password = hashPassword
-        await user.save()
-        res.json({message:"password changed sucessfully",valid:true})
+        const useremail = req.body
+        if(useremail){
+            const finduser = prisma.student.findFirst({
+                where:{
+                    email:email
+                }
+            })
     
+            const resetToken = finduser.resetToken
+            
+            if(resetToken){
+                const requireBody = z.object({
+                    email:z.string().email(),
+                    password: z.string().max(20),
+                })
+            
+                const safeParse = requireBody.safeParse(req.body)
+            
+                if (!safeParse.success) {
+                    res.status(411).json({
+                        message: "Incorrect format",
+                        error: safeParse.error.issues[0].message 
+                    })
+                    return
+                }
+            
+                const email = safeParse.data.email
+                const password = safeParse.data.password
+                const hashPassword = await bcrypt.hash(password,5)
+            
+                const user = await prisma.admin.findFirst({where:{email:email}})
+                if(!user){
+                    res.json({message:"Enter correct email!",valid:false})
+                }
+                    await prisma.admin.update({
+                        where:{
+                            id:user.id
+                        },
+                        data:{
+                            password:hashPassword,
+                            resetToken:null
+                        }
+                    })
+                    res.json({message:"password changed sucessfully",valid:true})
+            }
+            else{
+                res.json({message:"cannot updatePassword"})
+            }
+    
+        }
+        else{
+            res.json({message:"cannot find user"})
+        }
+
+        
      } catch (error) {
         res.json({message:"password change failed",valid:false})
       }
-  
   })
 
 module.exports={

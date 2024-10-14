@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken")
 require("dotenv").config()
-const SECRET = process.env.JWT_SECRET_STUDENT
+const SECRET = process.env.JWT_SECRET_ADMIN
 
 const verifyJwt = (req,res,next)=>{
     const {token} = req.headers

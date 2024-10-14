@@ -5,7 +5,9 @@ const requireBody = z.object({
     password: z.string().max(20),
     name: z.string(),
     year: z.string(),
-    usn: z.string().optional()
+    usn: z.string().optional(),
+    room:z.string().min(3).max(3),
+    block:z.string()
 })
 
 const zodVerify = (req,res,next)=>{
