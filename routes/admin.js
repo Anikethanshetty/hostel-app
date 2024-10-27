@@ -1,6 +1,6 @@
 const {Router} = require("express")
 const adminRouter = Router()
-const nodemailer = require('nodemailer');
+const nodemailer = require('nodemailer')
 const crypto = require('crypto')
 const {PrismaClient} = require("@prisma/client")
 const prisma = new PrismaClient()
@@ -8,7 +8,7 @@ const bcrypt = require("bcrypt")
 const {z} = require("zod")
 const jwt = require("jsonwebtoken")
 const {zodLoginVerify} = require("../middlewares/zodlogin")
-const {verifyJwt} = require("../middlewares/authJwt");
+const { verifyJwtAdmin } = require("../middlewares/authJwtAdmin")
 require("dotenv").config()
 const SECRET = process.env.JWT_SECRET_ADMIN
 
@@ -30,7 +30,7 @@ adminRouter.get("/login",zodLoginVerify,async(req,res)=>{
                         res.json({message:"invalid credentials"})
                     }
                     else{
-                        const token = jwt.sign({email:email},SECRET)
+                        const token = jwt.sign({email:email,name:user.name},SECRET)
                         res.json({valid:true,token,message:"Logged in Sucessfully"})
                     }
                 })
@@ -40,11 +40,11 @@ adminRouter.get("/login",zodLoginVerify,async(req,res)=>{
             }
 })
 
-adminRouter.get("/me",verifyJwt,(req,res)=>{
+adminRouter.get("/me",async(req,res)=>{
     const email = req.email
-    const user = prisma.admin.findFirst({where:{email:email}})
+    const user =await prisma.admin.findFirst({where:{email:email}})
    if(user){
-       res.json({message:"user found"})
+       res.json({message:"user found",user:user})
    }
 })
 
@@ -81,7 +81,7 @@ adminRouter.post("/forgotPassword",async(req,res)=>{
             if (error) {
               return res.status(500).json('Error sending email.');
             }
-            res.json({message:'Password reset link sent to your email.'});
+            res.json({message:'Password reset link sent to your email.'})
           })
     } catch (error) {
         res.json({message:"server error pls try agin later"})
@@ -106,7 +106,7 @@ adminRouter.get('/reset-password', async (req, res) => {
     })
 
  
-  adminRouter.post("/updatePassword",verifyJwt,async(req,res)=>{
+adminRouter.post("/updatePassword",verifyJwtAdmin,async(req,res)=>{
     
    try {
         const useremail = req.email
@@ -132,9 +132,9 @@ adminRouter.get('/reset-password', async (req, res) => {
             }
             
                 const password = req.body.password
-                console.log(password)
+    
                 const hashPassword = await bcrypt.hash(password,5)
-                    console.log(hashPassword)
+      
                     await prisma.admin.update({
                         where:{
                             id:user.id
@@ -159,6 +159,84 @@ adminRouter.get('/reset-password', async (req, res) => {
         res.json({message:"password change failed",valid:false})
       }
   })
+
+adminRouter.post("/block",async(req,res)=>{
+    const token = req.body.token
+    const usn = req.body.usn
+
+    const adminFind = jwt.verify(token,SECRET)
+
+    if(!adminFind){
+        return res.json({message:"not authorized to block"})
+    }
+
+ 
+    const user = await prisma.student.findFirst({where:{usn:usn}})
+    if(!user){
+     return res.json({message:"pls enter valid usn"})
+    }
+    await prisma.student.update({
+        where:{
+            email:user.email
+        }
+        ,data:{
+            blocked:true,
+            blockedBy: adminFind.name
+        }
+    })
+    res.json({message:`blocked ${user.name}`})
+})
+
+adminRouter.post("/allow",async(req,res)=>{
+    const token = req.body.token
+    const adminFind = jwt.verify(token,SECRET)
+
+    if(!adminFind){
+        return res.json({message:"not authorized to allow"})
+    }
+
+   const allowed =  await prisma.student.updateMany({
+        where:{
+            blocked:false
+        }
+        ,data:{
+            outing:true,
+            allowedBy: adminFind.name
+        }
+    })
+
+        if(allowed){
+            res.json({message:"allowed for outing"})
+        }
+        else{
+            res.json({message:"unable to allow outing"})
+        }
+})
+
+adminRouter.post("/stopAllow",async(req,res)=>{
+    const token = req.body.token
+    const adminFind = jwt.verify(token,SECRET)
+
+    if(!adminFind){
+        return res.json({message:"not authorized to notallow"})
+    }
+
+   const allowed =  await prisma.student.updateMany({
+        where:{
+            outing:true
+        }
+        ,data:{
+            outing:false
+        }
+    })
+        if(allowed){
+            res.json({message:"Stopped request forouting"})
+        }
+        else{
+            res.json({message:"unable to stop request for outing"})
+        }
+})
+
 module.exports={
     adminRouter:adminRouter
 }

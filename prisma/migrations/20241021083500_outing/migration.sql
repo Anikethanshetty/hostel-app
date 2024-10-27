@@ -14,6 +14,7 @@ CREATE TABLE "Student" (
     "verified" BOOLEAN NOT NULL DEFAULT false,
     "verificationToken" TEXT,
     "resetToken" TEXT,
+    "outing" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "Student_pkey" PRIMARY KEY ("id")
 );
@@ -36,7 +37,3 @@ CREATE UNIQUE INDEX "Student_email_key" ON "Student"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Admin_email_key" ON "Admin"("email");
-
-
-INSERT INTO users (name, email, password)
-VALUES ('1','shettyanikethand@gmail.com', '12345', 'Anikethan');

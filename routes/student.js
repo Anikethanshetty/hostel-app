@@ -7,7 +7,7 @@ const {z} = require("zod")
 const jwt = require("jsonwebtoken")
 const {zodVerify} = require("../middlewares/zodregistration")
 const {zodLoginVerify} = require("../middlewares/zodlogin")
-const {verifyJwt} = require("../middlewares/authJwt");
+const {verifyJwt} = require("../middlewares/authJwtStudent");
 require("dotenv").config()
 const SECRET = process.env.JWT_SECRET_STUDENT
 
@@ -72,28 +72,18 @@ studentRouter.post("/signup", zodVerify, async (req, res) => {
         })
 
     } catch (error) {
-        if (error.name === 'ValidationError') {
-           
-            for (let field in error.errors) {
-                const err = error.errors[field]
-                if (err.kind === 'enum') {
-                    res.json({ message: `Invalid year: ${err.value}` })
-                    return
-                }
-            }
-        } else {
-           
-            console.error('Error during signup:', error)
-            res.status(500).json({ message: "An error occurred during signup" })
-        }
+
+         console.error('Error during signup:', error)
+        res.status(500).json({ message: "An error occurred during signup" })
+        
     }
 })
 
 
-studentRouter.get("/verify-email", async (req, res) => {
+studentRouter.get("/verifyEmail", async (req, res) => {
     const { token, email } = req.query
     try {
-        const student = await prisma.student.findUnique({ 
+        const student = await prisma.student.findFirst({ 
            where:{
             email: email, 
             verificationToken: token 
@@ -104,7 +94,7 @@ studentRouter.get("/verify-email", async (req, res) => {
         }
         
         await prisma.student.update({
-            where:{id:student.id},
+            where:{email:email},
             data:{
                 verified:true,
                 verificationToken:null
@@ -117,14 +107,21 @@ studentRouter.get("/verify-email", async (req, res) => {
     }
 })
 
-studentRouter.get("/me",verifyJwt,(req,res)=>{
-         const email = req.body
-         const user = prisma.student.findFirst({where:{email:email}})
-        if(user){
-            res.json({message:"user found",email})
-        }
-})
-
+studentRouter.get("/checkVerified", async (req, res) => {
+    const { email } = req.query
+    try {
+      const student = await prisma.student.findFirst({
+        where: { email: email }
+      })
+      if (!student) {
+        return res.status(404).json({ message: "Student not found", verified: false })
+      }
+      res.json({ verified: student.verified })
+    } catch (error) {
+      res.status(500).json({ message: "Server error" })
+    }
+  })
+  
 studentRouter.get("/login",zodLoginVerify,async(req,res)=>{
             const {email,password} = req.body
             const user = await prisma.student.findFirst({
@@ -190,7 +187,7 @@ studentRouter.post("/forgotPassword",async(req,res)=>{
     } 
 })
 
-studentRouter.get('/reset-password', async (req, res) => {
+studentRouter.get('/resetPassword', async (req, res) => {
     const { token } = req.query
     const user = await prisma.student.findFirst({where:{resetToken: token}})
     if (!user) {
@@ -263,6 +260,28 @@ studentRouter.get('/reset-password', async (req, res) => {
         res.json({message:"password change failed",valid:false})
       }
   })
+
+  studentRouter.get("/me",verifyJwt,async(req,res)=>{
+    const email = req.body
+    const user = await prisma.student.findFirst({where:{email:email}})
+    
+    if(user){
+       res.json({message:"user found",user:user})
+    }
+})
+
+studentRouter.get("/requestOuting",verifyJwt,async(req,res)=>{
+    const email = req.email
+    const user = await prisma.student.findFirst({where:{email:email}})
+    if(user.outing){
+        
+        res.json({message:"Allowed",valid:true})
+     }
+     else{
+        res.json({message:" Not Allowed",valid:false})
+     }
+})
+
 
 module.exports={
     studentRouter:studentRouter

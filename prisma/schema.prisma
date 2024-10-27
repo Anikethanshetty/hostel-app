@@ -25,8 +25,14 @@ model Student{
   verified Boolean @default(false)
   verificationToken String?
   resetToken String?
+  outing Boolean @default(false)
+  blocked Boolean @default(false)
+  blockedBy String? 
+  allowedBy String? 
+  In Boolean @default(true)
+  out Boolean @default(false)
 }
-
+  
 enum YearEnum {
   First  // 1st Year
   Second // 2nd Year
