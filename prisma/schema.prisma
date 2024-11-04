@@ -23,7 +23,7 @@ model Student{
   room String 
   block String
   verified Boolean @default(false)
-  verificationToken String?
+  verificationToken Int?
   resetToken String?
   outing Boolean @default(false)
   blocked Boolean @default(false)

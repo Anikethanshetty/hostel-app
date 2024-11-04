@@ -1,3 +1,0 @@
--- AlterTable
-ALTER TABLE "Student" ADD COLUMN     "In" BOOLEAN NOT NULL DEFAULT true,
-ADD COLUMN     "out" BOOLEAN NOT NULL DEFAULT false;

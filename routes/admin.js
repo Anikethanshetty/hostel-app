@@ -187,6 +187,33 @@ adminRouter.post("/block",async(req,res)=>{
     res.json({message:`blocked ${user.name}`})
 })
 
+adminRouter.post("/removeblock",async(req,res)=>{
+    const token = req.body.token
+    const usn = req.body.usn
+
+    const adminFind = jwt.verify(token,SECRET)
+
+    if(!adminFind){
+        return res.json({message:"not authorized to block"})
+    }
+
+ 
+    const user = await prisma.student.findFirst({where:{usn:usn}})
+    if(!user){
+     return res.json({message:"pls enter valid usn"})
+    }
+    await prisma.student.update({
+        where:{
+            email:user.email
+        }
+        ,data:{
+            blocked:false,
+            blockedBy: null
+        }
+    })
+    res.json({message:`blocked ${user.name}`})
+})
+
 adminRouter.post("/allow",async(req,res)=>{
     const token = req.body.token
     const adminFind = jwt.verify(token,SECRET)

@@ -36,7 +36,7 @@ studentRouter.post("/signup", zodVerify, async (req, res) => {
 
      
         const hashPassword = await bcrypt.hash(password, 10)
-        const verificationToken = crypto.randomBytes(32).toString('hex')
+        const verificationToken = Math.floor(100000 + Math.random() * 900000)
 
         await prisma.student.create({
             data:{
@@ -56,16 +56,15 @@ studentRouter.post("/signup", zodVerify, async (req, res) => {
       
         const token = jwt.sign({ email }, SECRET)
     
-        const verificationLink = `${process.env.VERIFICATION_DOMAIN}?token=${verificationToken}&email=${email}`
 
         await transporter.sendMail({
             from: 'ashithkumargowda.aiet@gmail.com',
             to: email,
             subject: 'Email Verification',
-            html: `<h3>Hello ${name},</h3><p>Please verify your email by clicking on the link below:</p>
-                   <a href="${verificationLink}">Verify Email</a>`
+            html: `<h3>Hello ${name},</h3><p>Please verify your email using the following OTP:</p>
+                   <p><strong>${verificationToken}</strong></p>`
         })
-
+        
         res.json({
             message: "Signup successful! Please check your email to verify your account.",
             token: token
@@ -81,7 +80,7 @@ studentRouter.post("/signup", zodVerify, async (req, res) => {
 
 
 studentRouter.get("/verifyEmail", async (req, res) => {
-    const { token, email } = req.query
+    const { token, email } = req.body
     try {
         const student = await prisma.student.findFirst({ 
            where:{
@@ -107,20 +106,20 @@ studentRouter.get("/verifyEmail", async (req, res) => {
     }
 })
 
-studentRouter.get("/checkVerified", async (req, res) => {
-    const { email } = req.query
-    try {
-      const student = await prisma.student.findFirst({
-        where: { email: email }
-      })
-      if (!student) {
-        return res.status(404).json({ message: "Student not found", verified: false })
-      }
-      res.json({ verified: student.verified })
-    } catch (error) {
-      res.status(500).json({ message: "Server error" })
-    }
-  })
+// studentRouter.get("/checkVerified", async (req, res) => {
+//     const { email } = req.query
+//     try {
+//       const student = await prisma.student.findFirst({
+//         where: { email: email }
+//       })
+//       if (!student) {
+//         return res.status(404).json({ message: "Student not found", verified: false })
+//       }
+//       res.json({ verified: student.verified })
+//     } catch (error) {
+//       res.status(500).json({ message: "Server error" })
+//     }
+//   })
   
 studentRouter.get("/login",zodLoginVerify,async(req,res)=>{
             const {email,password} = req.body
@@ -281,6 +280,8 @@ studentRouter.get("/requestOuting",verifyJwt,async(req,res)=>{
         res.json({message:" Not Allowed",valid:false})
      }
 })
+
+
 
 
 module.exports={
