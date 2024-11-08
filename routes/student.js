@@ -1,13 +1,13 @@
 const {Router} = require("express")
 const studentRouter = Router()
-const nodemailer = require('nodemailer');
-const crypto = require('crypto');
+const nodemailer = require('nodemailer')
+const crypto = require('crypto')
 const bcrypt = require("bcrypt")
 const {z} = require("zod")
 const jwt = require("jsonwebtoken")
 const {zodVerify} = require("../middlewares/zodregistration")
 const {zodLoginVerify} = require("../middlewares/zodlogin")
-const {verifyJwt} = require("../middlewares/authJwtStudent");
+const {verifyJwt} = require("../middlewares/authJwtStudent")
 require("dotenv").config()
 const SECRET = process.env.JWT_SECRET_STUDENT
 
@@ -106,20 +106,7 @@ studentRouter.get("/verifyEmail", async (req, res) => {
     }
 })
 
-// studentRouter.get("/checkVerified", async (req, res) => {
-//     const { email } = req.query
-//     try {
-//       const student = await prisma.student.findFirst({
-//         where: { email: email }
-//       })
-//       if (!student) {
-//         return res.status(404).json({ message: "Student not found", verified: false })
-//       }
-//       res.json({ verified: student.verified })
-//     } catch (error) {
-//       res.status(500).json({ message: "Server error" })
-//     }
-//   })
+
   
 studentRouter.get("/login",zodLoginVerify,async(req,res)=>{
             const {email,password} = req.body
@@ -281,7 +268,20 @@ studentRouter.get("/requestOuting",verifyJwt,async(req,res)=>{
      }
 })
 
-
+// studentRouter.get("/checkVerified", async (req, res) => {
+//     const { email } = req.query
+//     try {
+//       const student = await prisma.student.findFirst({
+//         where: { email: email }
+//       })
+//       if (!student) {
+//         return res.status(404).json({ message: "Student not found", verified: false })
+//       }
+//       res.json({ verified: student.verified })
+//     } catch (error) {
+//       res.status(500).json({ message: "Server error" })
+//     }
+//   })
 
 
 module.exports={
