@@ -16,7 +16,7 @@ app.use("/admin/v1", adminRouter)
 
 async function connection() {
   try {
-    
+
     await prisma.$connect()
     console.log("Connected to the database")
 
