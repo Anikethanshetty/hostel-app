@@ -23,7 +23,7 @@ model Student{
   room String 
   block String
   verified Boolean @default(false)
-  verificationToken String?
+  verificationToken Int?
   resetToken String?
   outing Boolean @default(false)
   blocked Boolean @default(false)
@@ -43,6 +43,16 @@ enum YearEnum {
 
 model Admin{
   id Int @id @default(autoincrement())
+  email String @unique
+  password String 
+  name String
+  verified Boolean @default(false)
+  verificationToken String?
+  resetToken String?
+}
+
+model Security{
+   id Int @id @default(autoincrement())
   email String @unique
   password String 
   name String

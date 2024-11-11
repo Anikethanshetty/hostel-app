@@ -4,9 +4,9 @@ const nodemailer = require('nodemailer')
 const crypto = require('crypto')
 const {PrismaClient} = require("@prisma/client")
 const prisma = new PrismaClient()
-const bcrypt = require("bcrypt")
-const {z} = require("zod")
 const jwt = require("jsonwebtoken")
+const {z} = require("zod")
+const bcrypt = require("bcrypt")
 const {zodLoginVerify} = require("../middlewares/zodlogin")
 const { verifyJwtAdmin } = require("../middlewares/authJwtAdmin")
 require("dotenv").config()
@@ -22,7 +22,7 @@ const transporter = nodemailer.createTransport({
 
 adminRouter.get("/login",zodLoginVerify,async(req,res)=>{
             const {email,password} = req.body
-            const user = await prisma.admin.findFirst({where:{email:email}})
+            const user = await prisma.security.findFirst({where:{email:email}})
 
             if(user){
                 bcrypt.compare(password,user.password,(err,sucess)=>{
@@ -36,13 +36,13 @@ adminRouter.get("/login",zodLoginVerify,async(req,res)=>{
                 })
             }
             else{
-                res.json({message:"Admin not found please register"})
+                res.json({message:"Security not found please register"})
             }
 })
 
-adminRouter.get("/me",verifyJwtAdmin,async(req,res)=>{
+adminRouter.get("/me",async(req,res)=>{
     const email = req.email
-    const user =await prisma.admin.findFirst({where:{email:email}})
+    const user =await prisma.security.findFirst({where:{email:email}})
    if(user){
        res.json({message:"user found",user:user})
    }
@@ -51,14 +51,14 @@ adminRouter.get("/me",verifyJwtAdmin,async(req,res)=>{
 adminRouter.post("/forgotPassword",async(req,res)=>{
     try {
         const {email} = req.body
-        const user = await prisma.admin.findFirst({where:{email:email}})
+        const user = await prisma.security.findFirst({where:{email:email}})
       
         if(!user){
             return res.status(400).json({message:"user not found pls enter corect email.",valid:false})
         }
 
         const resetToken = crypto.randomBytes(32).toString('hex')
-        await prisma.admin.update({
+        await prisma.security.update({
             where:{
                 id:user.id
             },
@@ -93,7 +93,7 @@ adminRouter.post("/forgotPassword",async(req,res)=>{
 adminRouter.get('/reset-password', async (req, res) => {
     const { token } = req.query;
   
-    const user = await prisma.admin.findFirst({where:{resetToken: token}})
+    const user = await prisma.security.findFirst({where:{resetToken: token}})
     if (!user) {
       return res.status(400).send('Invalid or expired token.');
     }
@@ -112,7 +112,7 @@ adminRouter.post("/updatePassword",verifyJwtAdmin,async(req,res)=>{
         const useremail = req.email
         if(useremail){
             
-            const user = await prisma.admin.findFirst({
+            const user = await prisma.security.findFirst({
                 where:{
                     email:useremail
                 }
@@ -135,7 +135,7 @@ adminRouter.post("/updatePassword",verifyJwtAdmin,async(req,res)=>{
     
                 const hashPassword = await bcrypt.hash(password,5)
       
-                    await prisma.admin.update({
+                    await prisma.security.update({
                         where:{
                             id:user.id
                         },
@@ -159,111 +159,3 @@ adminRouter.post("/updatePassword",verifyJwtAdmin,async(req,res)=>{
         res.json({message:"password change failed",valid:false})
       }
   })
-
-adminRouter.post("/block",async(req,res)=>{
-    const token = req.body.token
-    const usn = req.body.usn
-
-    const adminFind = jwt.verify(token,SECRET)
-
-    if(!adminFind){
-        return res.json({message:"not authorized to block"})
-    }
-
- 
-    const user = await prisma.student.findFirst({where:{usn:usn}})
-    if(!user){
-     return res.json({message:"pls enter valid usn"})
-    }
-    await prisma.student.update({
-        where:{
-            email:user.email
-        }
-        ,data:{
-            blocked:true,
-            blockedBy: adminFind.name
-        }
-    })
-    res.json({message:`blocked ${user.name}`})
-})
-
-adminRouter.post("/removeblock",async(req,res)=>{
-    const token = req.body.token
-    const usn = req.body.usn
-
-    const adminFind = jwt.verify(token,SECRET)
-
-    if(!adminFind){
-        return res.json({message:"not authorized to block"})
-    }
-
- 
-    const user = await prisma.student.findFirst({where:{usn:usn}})
-    if(!user){
-     return res.json({message:"pls enter valid usn"})
-    }
-    await prisma.student.update({
-        where:{
-            email:user.email
-        }
-        ,data:{
-            blocked:false,
-            blockedBy: null
-        }
-    })
-    res.json({message:`blocked ${user.name}`})
-})
-
-adminRouter.post("/allow",async(req,res)=>{
-    const token = req.body.token
-    const adminFind = jwt.verify(token,SECRET)
-
-    if(!adminFind){
-        return res.json({message:"not authorized to allow"})
-    }
-
-   const allowed =  await prisma.student.updateMany({
-        where:{
-            blocked:false
-        }
-        ,data:{
-            outing:true,
-            allowedBy: adminFind.name
-        }
-    })
-
-        if(allowed){
-            res.json({message:"allowed for outing"})
-        }
-        else{
-            res.json({message:"unable to allow outing"})
-        }
-})
-
-adminRouter.post("/stopAllow",async(req,res)=>{
-    const token = req.body.token
-    const adminFind = jwt.verify(token,SECRET)
-
-    if(!adminFind){
-        return res.json({message:"not authorized to notallow"})
-    }
-
-   const allowed =  await prisma.student.updateMany({
-        where:{
-            outing:true
-        }
-        ,data:{
-            outing:false
-        }
-    })
-        if(allowed){
-            res.json({message:"Stopped request forouting"})
-        }
-        else{
-            res.json({message:"unable to stop request for outing"})
-        }
-})
-
-module.exports={
-    adminRouter:adminRouter
-}

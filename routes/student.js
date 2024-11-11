@@ -1,13 +1,13 @@
 const {Router} = require("express")
 const studentRouter = Router()
-const nodemailer = require('nodemailer');
-const crypto = require('crypto');
+const nodemailer = require('nodemailer')
+const crypto = require('crypto')
 const bcrypt = require("bcrypt")
 const {z} = require("zod")
 const jwt = require("jsonwebtoken")
 const {zodVerify} = require("../middlewares/zodregistration")
 const {zodLoginVerify} = require("../middlewares/zodlogin")
-const {verifyJwt} = require("../middlewares/authJwtStudent");
+const {verifyJwt} = require("../middlewares/authJwtStudent")
 require("dotenv").config()
 const SECRET = process.env.JWT_SECRET_STUDENT
 
@@ -36,7 +36,7 @@ studentRouter.post("/signup", zodVerify, async (req, res) => {
 
      
         const hashPassword = await bcrypt.hash(password, 10)
-        const verificationToken = crypto.randomBytes(32).toString('hex')
+        const verificationToken = Math.floor(100000 + Math.random() * 900000)
 
         await prisma.student.create({
             data:{
@@ -56,16 +56,15 @@ studentRouter.post("/signup", zodVerify, async (req, res) => {
       
         const token = jwt.sign({ email }, SECRET)
     
-        const verificationLink = `${process.env.VERIFICATION_DOMAIN}?token=${verificationToken}&email=${email}`
 
         await transporter.sendMail({
             from: 'ashithkumargowda.aiet@gmail.com',
             to: email,
             subject: 'Email Verification',
-            html: `<h3>Hello ${name},</h3><p>Please verify your email by clicking on the link below:</p>
-                   <a href="${verificationLink}">Verify Email</a>`
+            html: `<h3>Hello ${name},</h3><p>Please verify your email using the following OTP:</p>
+                   <p><strong>${verificationToken}</strong></p>`
         })
-
+        
         res.json({
             message: "Signup successful! Please check your email to verify your account.",
             token: token
@@ -81,7 +80,7 @@ studentRouter.post("/signup", zodVerify, async (req, res) => {
 
 
 studentRouter.get("/verifyEmail", async (req, res) => {
-    const { token, email } = req.query
+    const { token, email } = req.body
     try {
         const student = await prisma.student.findFirst({ 
            where:{
@@ -107,20 +106,7 @@ studentRouter.get("/verifyEmail", async (req, res) => {
     }
 })
 
-studentRouter.get("/checkVerified", async (req, res) => {
-    const { email } = req.query
-    try {
-      const student = await prisma.student.findFirst({
-        where: { email: email }
-      })
-      if (!student) {
-        return res.status(404).json({ message: "Student not found", verified: false })
-      }
-      res.json({ verified: student.verified })
-    } catch (error) {
-      res.status(500).json({ message: "Server error" })
-    }
-  })
+
   
 studentRouter.get("/login",zodLoginVerify,async(req,res)=>{
             const {email,password} = req.body
@@ -148,6 +134,7 @@ studentRouter.get("/login",zodLoginVerify,async(req,res)=>{
 
 studentRouter.post("/forgotPassword",async(req,res)=>{
     try {
+
         const {email} = req.body
         const user = await prisma.student.findFirst({where:{email:email}})
       
@@ -155,7 +142,7 @@ studentRouter.post("/forgotPassword",async(req,res)=>{
             return res.status(400).json({message:"user not found pls enter corect email.",valid:false})
         }
 
-        const resetToken = crypto.randomBytes(32).toString('hex')
+        const resetToken = Math.floor(100000 + Math.random() * 900000)
        
         await prisma.student.update({
             where:{
@@ -166,21 +153,19 @@ studentRouter.post("/forgotPassword",async(req,res)=>{
             }
         })
 
-        const resetLink = `${process.env.FORGOT_PASSWORD_DOMIAN}?token=${resetToken}`
-
-        const mailOptions = {
+        await transporter.sendMail({
             from: 'ashithkumargowda.aiet@gmail.com',
-            to: user.email,
-            subject: 'Password Reset',
-            html: `<h3>Hello,</h3><p>Please click the link below to reset your password:</p>
-                   <a href="${resetLink}">Reset Password</a>`,
-          }
+            to: email,
+            subject: 'Email Verification',
+            html: `<h3>Hello ${user.name},</h3><p>Please verify your email using the following OTP:</p>
+                   <p><strong>${verificationToken}</strong></p>`
+        })
 
           transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
               return res.status(500).json('Error sending email.');
             }
-            res.json({message:'Password reset link sent to your email.'});
+            res.json({message:'pls enter the otp sent to your email'});
           })
     } catch (error) {
         res.json({message:"server error pls try agin later"})
@@ -188,30 +173,36 @@ studentRouter.post("/forgotPassword",async(req,res)=>{
 })
 
 studentRouter.get('/resetPassword', async (req, res) => {
-    const { token } = req.query
+    const { token } = req.body
     const user = await prisma.student.findFirst({where:{resetToken: token}})
     if (!user) {
       return res.status(400).send('Invalid token.');
     }
     else{
+        await prisma.student.update({
+            where:{
+                email:user.email
+            },
+            data:{
+                resetToken:null
+            }
+        })
         res.json({message:"Reset Password",valid:true})
     }
   })
 
-  studentRouter.post("/updatePassword",verifyJwt,async(req,res)=>{
+  studentRouter.post("/updatePassword",async(req,res)=>{
     
    try {
-        const useremail = req.body
-        if(useremail){
+        const {email} = req.body
+        if(email){
             const finduser = prisma.student.findFirst({
                 where:{
                     email:email
                 }
             })
-    
-            const resetToken = finduser.resetToken
             
-            if(resetToken){
+            if(finduser){
                 const requireBody = z.object({
                     email:z.string().email(),
                     password: z.string().max(20),
@@ -221,7 +212,7 @@ studentRouter.get('/resetPassword', async (req, res) => {
             
                 if (!safeParse.success) {
                     res.status(411).json({
-                        message: "Incorrect format",
+                        message: "Incorrect format please enter email or password in correct format and password must be les than 20 characters",
                         error: safeParse.error.issues[0].message 
                     })
                     return
@@ -261,7 +252,7 @@ studentRouter.get('/resetPassword', async (req, res) => {
       }
   })
 
-  studentRouter.get("/me",verifyJwt,async(req,res)=>{
+  studentRouter.get("/me",async(req,res)=>{
     const email = req.body
     const user = await prisma.student.findFirst({where:{email:email}})
     
@@ -270,7 +261,7 @@ studentRouter.get('/resetPassword', async (req, res) => {
     }
 })
 
-studentRouter.get("/requestOuting",verifyJwt,async(req,res)=>{
+studentRouter.get("/requestOuting",async(req,res)=>{
     const email = req.email
     const user = await prisma.student.findFirst({where:{email:email}})
     if(user.outing){
@@ -281,6 +272,21 @@ studentRouter.get("/requestOuting",verifyJwt,async(req,res)=>{
         res.json({message:" Not Allowed",valid:false})
      }
 })
+
+// studentRouter.get("/checkVerified", async (req, res) => {
+//     const { email } = req.query
+//     try {
+//       const student = await prisma.student.findFirst({
+//         where: { email: email }
+//       })
+//       if (!student) {
+//         return res.status(404).json({ message: "Student not found", verified: false })
+//       }
+//       res.json({ verified: student.verified })
+//     } catch (error) {
+//       res.status(500).json({ message: "Server error" })
+//     }
+//   })
 
 
 module.exports={
