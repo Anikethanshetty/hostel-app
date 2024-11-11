@@ -134,6 +134,7 @@ studentRouter.get("/login",zodLoginVerify,async(req,res)=>{
 
 studentRouter.post("/forgotPassword",async(req,res)=>{
     try {
+
         const {email} = req.body
         const user = await prisma.student.findFirst({where:{email:email}})
       
@@ -141,7 +142,7 @@ studentRouter.post("/forgotPassword",async(req,res)=>{
             return res.status(400).json({message:"user not found pls enter corect email.",valid:false})
         }
 
-        const resetToken = crypto.randomBytes(32).toString('hex')
+        const resetToken = Math.floor(100000 + Math.random() * 900000)
        
         await prisma.student.update({
             where:{
@@ -152,21 +153,19 @@ studentRouter.post("/forgotPassword",async(req,res)=>{
             }
         })
 
-        const resetLink = `${process.env.FORGOT_PASSWORD_DOMIAN}?token=${resetToken}`
-
-        const mailOptions = {
+        await transporter.sendMail({
             from: 'ashithkumargowda.aiet@gmail.com',
-            to: user.email,
-            subject: 'Password Reset',
-            html: `<h3>Hello,</h3><p>Please click the link below to reset your password:</p>
-                   <a href="${resetLink}">Reset Password</a>`,
-          }
+            to: email,
+            subject: 'Email Verification',
+            html: `<h3>Hello ${user.name},</h3><p>Please verify your email using the following OTP:</p>
+                   <p><strong>${verificationToken}</strong></p>`
+        })
 
           transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
               return res.status(500).json('Error sending email.');
             }
-            res.json({message:'Password reset link sent to your email.'});
+            res.json({message:'pls enter the otp sent to your email'});
           })
     } catch (error) {
         res.json({message:"server error pls try agin later"})
@@ -174,30 +173,36 @@ studentRouter.post("/forgotPassword",async(req,res)=>{
 })
 
 studentRouter.get('/resetPassword', async (req, res) => {
-    const { token } = req.query
+    const { token } = req.body
     const user = await prisma.student.findFirst({where:{resetToken: token}})
     if (!user) {
       return res.status(400).send('Invalid token.');
     }
     else{
+        await prisma.student.update({
+            where:{
+                email:user.email
+            },
+            data:{
+                resetToken:null
+            }
+        })
         res.json({message:"Reset Password",valid:true})
     }
   })
 
-  studentRouter.post("/updatePassword",verifyJwt,async(req,res)=>{
+  studentRouter.post("/updatePassword",async(req,res)=>{
     
    try {
-        const useremail = req.body
-        if(useremail){
+        const {email} = req.body
+        if(email){
             const finduser = prisma.student.findFirst({
                 where:{
                     email:email
                 }
             })
-    
-            const resetToken = finduser.resetToken
             
-            if(resetToken){
+            if(finduser){
                 const requireBody = z.object({
                     email:z.string().email(),
                     password: z.string().max(20),
@@ -207,7 +212,7 @@ studentRouter.get('/resetPassword', async (req, res) => {
             
                 if (!safeParse.success) {
                     res.status(411).json({
-                        message: "Incorrect format",
+                        message: "Incorrect format please enter email or password in correct format and password must be les than 20 characters",
                         error: safeParse.error.issues[0].message 
                     })
                     return
@@ -247,7 +252,7 @@ studentRouter.get('/resetPassword', async (req, res) => {
       }
   })
 
-  studentRouter.get("/me",verifyJwt,async(req,res)=>{
+  studentRouter.get("/me",async(req,res)=>{
     const email = req.body
     const user = await prisma.student.findFirst({where:{email:email}})
     
@@ -256,7 +261,7 @@ studentRouter.get('/resetPassword', async (req, res) => {
     }
 })
 
-studentRouter.get("/requestOuting",verifyJwt,async(req,res)=>{
+studentRouter.get("/requestOuting",async(req,res)=>{
     const email = req.email
     const user = await prisma.student.findFirst({where:{email:email}})
     if(user.outing){

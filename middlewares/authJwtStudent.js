@@ -3,7 +3,7 @@ require("dotenv").config()
 const SECRET = process.env.JWT_SECRET_STUDENT
 
 const verifyJwt = (req,res,next)=>{
-    const {token} = req.headers
+    const {token} = req.body
     if(token){
         jwt.verify(token,SECRET,(err,decoded)=>{
             if(err){
