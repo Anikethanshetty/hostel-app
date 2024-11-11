@@ -17,6 +17,8 @@ app.use(cors({
 
 app.use("/student/v1", studentRouter)
 app.use("/admin/v1", adminRouter)
+app.use("/security/v1", adminRouter)
+
 
 
 async function connection() {
