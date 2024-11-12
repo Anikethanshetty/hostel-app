@@ -9,11 +9,11 @@ const prisma = new PrismaClient()
 const { studentRouter } = require("./routes/student")
 const { adminRouter } = require("./routes/admin")
 app.use(express.json())
-app.use(cors({
-  origin: "http://localhost:8081",
-  optionsSuccessStatus: 200,
-  credentials: true,
-}))
+// app.use(cors({
+//   origin: "*",
+//   optionsSuccessStatus: 200,
+//   credentials: true,
+// }))
 
 app.use("/student/v1", studentRouter)
 app.use("/admin/v1", adminRouter)

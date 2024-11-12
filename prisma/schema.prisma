@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-<<<<<<< HEAD
 model Student {
   id                Int      @id @default(autoincrement())
   email             String   @unique
@@ -32,33 +25,6 @@ model Student {
   allowedBy         String?
   In                Boolean  @default(true)
   out               Boolean  @default(false)
-=======
-model Student{
-  id Int @id @default(autoincrement())
-  email String @unique
-  password String 
-  name String 
-  year YearEnum
-  usn  String @default("1st year")
-  room String 
-  block String
-  verified Boolean @default(false)
-  verificationToken Int?
-  resetToken String?
-  outing Boolean @default(false)
-  blocked Boolean @default(false)
-  blockedBy String? 
-  allowedBy String? 
-  In Boolean @default(true)
-  out Boolean @default(false)
->>>>>>> upstream/master
-}
-
-enum YearEnum {
-  First // 1st Year
-  Second // 2nd Year
-  Third // 3rd Year
-  Fourth // 4th Year
 }
 
 model Admin {
@@ -68,19 +34,12 @@ model Admin {
   name              String
   verified          Boolean @default(false)
   verificationToken String?
-<<<<<<< HEAD
   resetToken        String?
-=======
-  resetToken String?
 }
 
-model Security{
-   id Int @id @default(autoincrement())
-  email String @unique
-  password String 
-  name String
-  verified Boolean @default(false)
-  verificationToken String?
-  resetToken String?
->>>>>>> upstream/master
+enum YearEnum {
+  First
+  Second
+  Third
+  Fourth
 }
