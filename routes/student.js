@@ -262,10 +262,9 @@ studentRouter.get('/resetPassword', async (req, res) => {
 })
 
 studentRouter.get("/requestOuting",async(req,res)=>{
-    const email = req.email
+    const email = req.body
     const user = await prisma.student.findFirst({where:{email:email}})
     if(user.outing){
-        
         res.json({message:"Allowed",valid:true})
      }
      else{
