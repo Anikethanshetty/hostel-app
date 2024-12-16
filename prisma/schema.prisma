@@ -13,50 +13,49 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Student{
-  id Int @id @default(autoincrement())
-  email String @unique
-  password String 
-  name String 
-  year YearEnum
-  usn  String @default("1st year")
-  room String 
-  block String
-  verified Boolean @default(false)
+model Student {
+  id                Int      @id @default(autoincrement())
+  email             String   @unique
+  password          String
+  name              String
+  year              YearEnum
+  usn               String   @default("1st year")
+  room              String
+  block             String
+  verified          Boolean  @default(false)
   verificationToken Int?
-  resetToken String?
-  outing Boolean @default(false)
-  blocked Boolean @default(false)
-  blockedBy String? 
-  allowedBy String? 
-  In Boolean @default(true)
-  out Boolean @default(false)
+  resetToken        String?
+  outing            Boolean  @default(false)
+  blocked           Boolean  @default(false)
+  blockedBy         String?
+  allowedBy         String?
+  In                Boolean  @default(true)
+  out               Boolean  @default(false)
 }
-  
+
 enum YearEnum {
-  First  // 1st Year
+  First // 1st Year
   Second // 2nd Year
-  Third  // 3rd Year
+  Third // 3rd Year
   Fourth // 4th Year
 }
 
-
-model Admin{
-  id Int @id @default(autoincrement())
-  email String @unique
-  password String 
-  name String
-  verified Boolean @default(false)
+model Admin {
+  id                Int     @id @default(autoincrement())
+  email             String  @unique
+  password          String
+  name              String
+  verified          Boolean @default(false)
   verificationToken String?
-  resetToken String?
+  resetToken        String?
 }
 
-model Security{
-   id Int @id @default(autoincrement())
-  email String @unique
-  password String 
-  name String
-  verified Boolean @default(false)
+model Security {
+  id                Int     @id @default(autoincrement())
+  email             String  @unique
+  password          String
+  name              String
+  verified          Boolean @default(false)
   verificationToken String?
-  resetToken String?
+  resetToken        String?
 }
